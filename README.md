@@ -6,8 +6,8 @@ A tiny desktop cat companion driven by real breathing and pulse readings from th
 **For general wellness and informational purposes only.** PAWSE is not a medical device. It does not
 diagnose, treat or monitor any condition, and it makes no stress or emotion inferences.
 
-> Status: Phase 2.5 (stabilization). The final hand-drawn artwork is not done; the cat is a placeholder.
-> See [What is tested vs. unverified](#what-is-tested-vs-unverified) before relying on any claim here.
+> Status: Phase 3 (the living cat). See [What is tested vs. unverified](#what-is-tested-vs-unverified)
+> before relying on any claim here: live validation with a real camera is still pending.
 
 ## Prerequisites
 
@@ -108,7 +108,42 @@ SDK usage (verified against `@smartspectra/node-sdk` 3.4.0):
 
 These paths are covered by unit tests with a fake SDK. **They have not been triggered by the real SDK** (see below).
 
-## Animation (Phase 2)
+## The living cat (Phase 3)
+
+*Your breathing brings a little companion to life.* The cat is original SVG artwork (no images, no animation
+library) on a cozy scene: cushion, rug, lamp, plant, yarn ball and a few drifting motes.
+
+| Layer | What it does | Driven by |
+| --- | --- | --- |
+| Breathing | Body and belly swell and settle, the head lifts slightly, a faint halo breathes | measured breathing **rate** (Phase 2 engine) |
+| Heartbeat | Soft glow in the chest pulses | measured pulse **rate** |
+| Blinking, ear twitches | Independent, randomly timed | seeded RNG, no signal |
+| Personality | Tail sway and flicks, head tilts, whisker sway, pupil size, soft smile, resting "zzz" | session **state** only (`personality.ts`) |
+| Petting | Click, tap or keyboard on the cat: ears perk, smile, tail swish (visual only) | user |
+
+Expressions by state: **curious** while searching (wide pupils, perked and swivelling ears, frequent head tilts),
+**patient** while settling, **peaceful** when connected (soft eyes, gentle smile, lamp glows), **sleepy** when
+resting (half-lidded, floating z's), **wondering** when the signal pauses, **quiet** on error. These describe the
+*app state*. Nothing infers stress, mood or any emotion from the user's physiology.
+
+Honest limits of the animation (unchanged): it follows the *rate*, not individual breaths or beats; with no
+breathing rate the cat uses a decorative cycle, and the UI chips say so.
+
+Accessibility: the cat is a real button ("Pet PAWSE") with a state-describing accessible name; scenery is
+`aria-hidden`; the state pill is a live status; focus rings are visible; layout is responsive (checked at 375 px
+wide) and the Start button stays reachable (sticky). `prefers-reduced-motion` scales JS motion to 40 % and stops
+the CSS drift animations.
+
+### Development-only simulation (no camera, no SDK, no credits)
+
+`npm run dev` shows a small **DEV ONLY · simulation** control (top-left). Pick a scenario (calm, slow, fast,
+settling, searching, signal lost, resting, error) to preview the cat. It is built in the renderer, never calls the
+SDK or main process, shows a **SIMULATION** banner, labels every value and chip as *simulated, not real*, and
+replaces the real Start/Stop controls while active. The renderer can also be opened in a plain browser at the dev
+server URL (an inert stub stands in for the preload bridge). Neither exists in production builds: the simulation
+modules are excluded (checked by scanning `out/renderer` after `npm run build`; only an inert banner label string remains).
+
+## Animation engine (Phase 2)
 
 Pure, DOM-free modules in `src/shared/animation/`, driven in the renderer by `useCatAnimation`.
 
@@ -181,11 +216,15 @@ lsof -nP -i -a -c Electron | grep ESTABLISHED
 | SDK service lifecycle, cleanup, cancellation, recovery, malformed-packet handling | Tested **with a fake SDK** | unit tests |
 | IPC handlers (consent gate, channel set) and preload surface | Tested | unit tests |
 | Animation engine, state mapping, hysteresis, loop cleanup | Tested | unit tests |
+| Personality engine (tail, tilts, expressions, petting), reduced motion | Tested | unit tests |
+| Measured rate → visible belly cycles and chest-glow pulses (at 60 fps simulated) | Tested | `livingCat.test.ts` |
+| Cat artwork renders, every state, desktop and 375 px layout | Checked visually in a browser with the dev simulation | screenshots during development; not real measurements |
+| Cat motion timing in a real browser/Electron window | **Not measured** (the preview pane was hidden and throttled to ~1 fps) | |
 | UI flows (consent, start/stop, blocked/error/notice states, live vs decorative chips, diagnostics toggle, unmount cleanup) | Tested | jsdom tests with a stubbed `window.pawse` |
 | Native SDK loads on macOS arm64; camera is listed | Verified once | script on the dev machine |
 | Live breathing/pulse readings appear in the app | **Reported working by the project owner; not yet captured with diagnostics** | no recorded run |
 | Real metrics cadence, `stable` behaviour, stale frequency | **Unverified** | run a session with the diagnostics panel |
-| Cat breathing/heartbeat visibly tracking live rate | **Unverified on a real device** | see manual steps below |
+| Cat breathing/heartbeat visibly tracking *live* rate | **Unverified on a real device** | see manual steps below |
 | Recovery from real SDK errors | **Unverified** (never triggered with the real SDK) | |
 | What data leaves the device | **Not verified** (see Privacy) | |
 | Windows / Linux, packaged builds | **Not tested** | |

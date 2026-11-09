@@ -38,7 +38,7 @@ async function ensureCameraAccess(): Promise<{ granted: boolean; message?: strin
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
     width: 960,
-    height: 720,
+    height: 820,
     minWidth: 720,
     minHeight: 560,
     backgroundColor: '#1b1d1c',
