@@ -28,18 +28,17 @@ breathe at *your* pace for one quiet minute.
 <table>
   <tr>
     <td align="center"><img src="docs/images/pawse-meet.jpg" alt="Meet PAWSE: the resting cat, camera consent and the Wake up PAWSE button" width="300" /></td>
-    <td align="center"><img src="docs/images/pawse-breathe-together-simulated.jpg" alt="Breathe together: the cat with a 60-second progress ring and small readouts (simulated values)" width="300" /></td>
-    <td align="center"><img src="docs/images/pawse-peace-simulated.jpg" alt="A little moment of peace: the cat curled up with eyes closed after 60 seconds (simulated)" width="300" /></td>
+    <td align="center"><img src="docs/images/pawse-breathe-together.jpg" alt="Breathe together: the cat with the 60-second progress ring and live breathing and pulse readings" width="300" /></td>
+    <td align="center"><img src="docs/images/pawse-peace.jpg" alt="A little moment of peace: the cat curled up with its eyes closed and the final message" width="300" /></td>
   </tr>
   <tr>
     <td align="center"><sub><b>1 · Meet PAWSE</b><br />resting cat, plain consent</sub></td>
-    <td align="center"><sub><b>3 · Breathe together</b><br />60 s ring · <i>simulated values</i></sub></td>
-    <td align="center"><sub><b>4 · A little moment of peace</b><br />the cat settles · <i>simulated</i></sub></td>
+    <td align="center"><sub><b>3 · Breathe together</b><br />60 s ring · live readings</sub></td>
+    <td align="center"><sub><b>4 · A little moment of peace</b><br />the cat settles</sub></td>
   </tr>
 </table>
 
-<sub>Screens 3 and 4 were captured with the development-only simulation (no camera, no SDK, no credits) and say so on screen.
-A capture from a real session is in [Real-device evidence](#real-device-evidence).</sub>
+<sub>A capture from a real session is in [Real-device evidence](#real-device-evidence).</sub>
 
 </div>
 
