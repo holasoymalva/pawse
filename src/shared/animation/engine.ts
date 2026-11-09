@@ -89,8 +89,9 @@ const TAU_RATE = 2.5
 /** Largest step honoured; longer gaps (hidden tab, debugger) are clamped. */
 export const MAX_STEP_SECONDS = 0.1
 
-const BLINK_DURATION = 0.16
-const EAR_TWITCH_DURATION = 0.35
+/** Blink and twitch lengths vary event to event, like a real cat's. */
+const BLINK_DURATION: readonly [number, number] = [0.12, 0.24]
+const EAR_TWITCH_DURATION: readonly [number, number] = [0.25, 0.5]
 
 function approach(current: number, target: number, dt: number, tau: number): number {
   return current + (target - current) * (1 - Math.exp(-dt / tau))
@@ -99,6 +100,8 @@ function approach(current: number, target: number, dt: number, tau: number): num
 interface PulseEvent {
   nextAt: number
   startedAt: number | null
+  /** Length of the event currently playing (seconds). */
+  duration: number
   /** Extra events queued after the current one (e.g. second half of a double blink). */
   queued: number
   /** True while the event is the second half of a double (so it cannot chain further). */
@@ -142,9 +145,9 @@ export class AnimationEngine {
     this.heartAmp = mood.heartAmp
     this.droop = mood.droop
     this.eyeOpen = mood.eyeOpen
-    this.blink = { nextAt: 1.5 + this.rng() * 3, startedAt: null, queued: 0, followUp: false, direction: 1 }
-    this.earL = { nextAt: 2 + this.rng() * 5, startedAt: null, queued: 0, followUp: false, direction: 1 }
-    this.earR = { nextAt: 3 + this.rng() * 6, startedAt: null, queued: 0, followUp: false, direction: -1 }
+    this.blink = { nextAt: 1.5 + this.rng() * 3, startedAt: null, duration: 0.16, queued: 0, followUp: false, direction: 1 }
+    this.earL = { nextAt: 2 + this.rng() * 5, startedAt: null, duration: 0.16, queued: 0, followUp: false, direction: 1 }
+    this.earR = { nextAt: 3 + this.rng() * 6, startedAt: null, duration: 0.16, queued: 0, followUp: false, direction: -1 }
   }
 
   setInput(input: EngineInput): void {
@@ -202,28 +205,31 @@ export class AnimationEngine {
   /** Advance one scheduled ambient event and return its current 0..1 shape. */
   private advance(
     ev: PulseEvent,
-    duration: number,
+    durationRange: readonly [number, number],
     minGap: number,
     maxGap: number,
     allowDouble: boolean
   ): number {
     if (ev.startedAt === null && this.time >= ev.nextAt) {
       ev.startedAt = ev.nextAt
+      ev.duration = durationRange[0] + this.rng() * (durationRange[1] - durationRange[0])
       if (!allowDouble) ev.direction = this.rng() < 0.5 ? 1 : -1
       if (allowDouble && !ev.followUp && this.rng() < 0.15) ev.queued = 1
       ev.followUp = false
     }
     if (ev.startedAt === null) return 0
-    const u = (this.time - ev.startedAt) / duration
+    const u = (this.time - ev.startedAt) / ev.duration
     if (u >= 1) {
-      const endedAt = ev.startedAt + duration
+      const endedAt = ev.startedAt + ev.duration
       ev.startedAt = null
       if (ev.queued > 0) {
         ev.queued -= 1
         ev.followUp = true
         ev.nextAt = endedAt + 0.12
       } else {
-        ev.nextAt = endedAt + minGap + this.rng() * (maxGap - minGap)
+        // Skewed gaps with the occasional long pause: irregular, never a metronome.
+        const gap = minGap + Math.pow(this.rng(), 1.5) * (maxGap - minGap)
+        ev.nextAt = endedAt + (this.rng() < 0.1 ? gap * 1.8 : gap)
       }
       return 0
     }

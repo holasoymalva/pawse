@@ -6,7 +6,7 @@ A tiny desktop cat companion driven by real breathing and pulse readings from th
 **For general wellness and informational purposes only.** PAWSE is not a medical device. It does not
 diagnose, treat or monitor any condition, and it makes no stress or emotion inferences.
 
-> Status: Phase 3 (the living cat). See [What is tested vs. unverified](#what-is-tested-vs-unverified)
+> Status: Phase 4 (Breathe Together). See [What is tested vs. unverified](#what-is-tested-vs-unverified)
 > before relying on any claim here: live validation with a real camera is still pending.
 
 ## Prerequisites
@@ -54,6 +54,7 @@ npm run start    # run the production build
 | `npm run typecheck` | strict TypeScript, main/preload/shared and renderer projects |
 | `npm run lint` | ESLint |
 | `npm test` | Vitest (node + jsdom) |
+| `npm run check:prod` | After `npm run build`: fails if the production bundle contains development-only simulation code |
 
 ### macOS camera permission (read this before the first run)
 
@@ -107,6 +108,48 @@ SDK usage (verified against `@smartspectra/node-sdk` 3.4.0):
 | Undecodable metrics packet | Ignored; 5 in a row fail the session (`DecodeError`) |
 
 These paths are covered by unit tests with a fake SDK. **They have not been triggered by the real SDK** (see below).
+
+## Breathe Together (Phase 4)
+
+A 60-second experience in four stages, driven by the real SDK session (pure state machine in
+`src/shared/experience/machine.ts`, UI in `App.tsx`):
+
+1. **Meet PAWSE.** The resting cat, a plain explanation of camera use and explicit consent, then **Wake up PAWSE**.
+2. **Connecting.** The cat is curious. Friendly status lines come only from the real session state (camera starting,
+   looking for you, SDK hints such as "too dark", almost there). It never says it is connected before a valid reading.
+3. **Breathe together.** Starts only after a **fresh, stable breathing reading** has held for 1.5 s (`isLiveBreathing`).
+   A thin progress ring, a countdown, small live readouts and the live-vs-decorative chips are shown. Stop works at any moment.
+4. **A little moment of peace.** After 60 s of *valid* measurement the camera is released, the cat settles (eyes closed,
+   head lowered, ears down, tail drawn in), a few hearts float up, and the message appears with **Start another session**.
+
+Rules that keep it honest:
+
+- Completion is **elapsed valid measurement time only**. No target rate, no scoring, no comparison of values, no stress or
+  emotion inference.
+- No valid signal means no time is credited. After 1.5 s without a valid reading the timer **pauses** ("Lost your signal");
+  it resumes after 1 s of valid signal with progress kept. Decorative motion is never presented as physiological: while
+  paused the chips say *last reading (paused)* / *off*.
+- Time is credited in steps of at most 1 s per tick, so sleep or throttled timers are never counted as measurement time.
+- A session failure (camera permission, credits exhausted, server unreachable, API key) returns to the welcome with a
+  plain-language explanation (`friendlyError`). Real sessions already running when the window loads are adopted.
+- Nothing about the session is stored.
+
+### Personality upgrades
+
+`personality.ts` now adds independent tail swishes and flicks (drifting frequency, slowly varying amplitude), curious
+glances (the eyes move inside the lids), slow content blinks, sideways head adjustments, and varied blink lengths and gaps.
+An activity budget (at most two major head/tail/ear movements at once, with a cooldown) stops the cat from doing too much
+at once. All of it is seeded and deterministic, and driven only by the session *state*. Belly breathing is unchanged
+(rate-driven, smoothed), and the lamp, a firefly and the yarn ball add occasional ambient life.
+
+### Development simulation (updated)
+
+The **DEV ONLY · simulation** panel is collapsed by default and sits in the page flow after the footer, so it never covers
+the title or the cat. It offers breathing presets (slow 8, normal 14, fast 22 br/min), situations (settling, searching,
+signal lost, resting, errors including exhausted credits) and an experience speed (×1, ×10, ×30, ×60) to preview the
+60-second journey quickly. Everything is labelled *simulated*, never reaches the SDK or main process, and cannot start a
+camera session; enabling it while a real session runs stops that session first. Production builds exclude the
+simulation modules, which `npm run check:prod` verifies and `src/tooling/guards.test.ts` guards statically.
 
 ## The living cat (Phase 3)
 
@@ -219,7 +262,12 @@ lsof -nP -i -a -c Electron | grep ESTABLISHED
 | Personality engine (tail, tilts, expressions, petting), reduced motion | Tested | unit tests |
 | Measured rate → visible belly cycles and chest-glow pulses (at 60 fps simulated) | Tested | `livingCat.test.ts` |
 | Cat artwork renders, every state, desktop and 375 px layout | Checked visually in a browser with the dev simulation | screenshots during development; not real measurements |
+| "Breathe Together" journey: stage transitions, 60 s timer accuracy, pause/resume, cancellation, completion releasing the camera | Tested | state-machine unit tests; UI tests on a controlled clock (real-session API stubbed) and with the dev simulation |
+| Error handling: camera permission, credits exhausted, server errors, API key | Tested (copy and flow) with *simulated/stubbed* errors | UI tests; never triggered with the real SDK |
+| Simulation isolation and production exclusion | Tested | UI tests, static guards, `npm run check:prod` (with a negative control) |
+| Reduced motion | Tested for CSS coverage of every animation and that the journey completes; not checked on a real OS setting | static guard test |
 | Cat motion timing in a real browser/Electron window | **Not measured** (the preview pane was hidden and throttled to ~1 fps) | |
+| The 60-second journey with a real camera and live SDK readings | **Unverified** | needs a real session |
 | UI flows (consent, start/stop, blocked/error/notice states, live vs decorative chips, diagnostics toggle, unmount cleanup) | Tested | jsdom tests with a stubbed `window.pawse` |
 | Native SDK loads on macOS arm64; camera is listed | Verified once | script on the dev machine |
 | Live breathing/pulse readings appear in the app | **Reported working by the project owner; not yet captured with diagnostics** | no recorded run |

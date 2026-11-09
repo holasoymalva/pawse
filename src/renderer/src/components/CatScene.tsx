@@ -1,5 +1,6 @@
-import type { Ref } from 'react'
+import type { CSSProperties, Ref } from 'react'
 import type { CatState } from '@shared/animation/catState'
+import type { Stage } from '@shared/experience/machine'
 
 /**
  * The cozy PAWSE scene and the illustrated cat (original artwork, plain SVG).
@@ -22,7 +23,21 @@ interface Props {
   svgRef: Ref<SVGSVGElement>
   /** Human description of the current state, used for the accessible name. */
   description: string
+  /** "Breathe Together" stage; drives the progress ring and the celebration. */
+  stage?: Stage
+  /** 0…1 progress of valid measurement time in the 60-second experience. */
+  progress?: number
 }
+
+const HEARTS: readonly { x: number; y: number; dx: number; delay: number; size: number }[] = [
+  { x: 150, y: 96, dx: -26, delay: 0.0, size: 1.0 },
+  { x: 196, y: 70, dx: -8, delay: 0.35, size: 0.7 },
+  { x: 244, y: 56, dx: 6, delay: 0.15, size: 1.15 },
+  { x: 292, y: 72, dx: 14, delay: 0.55, size: 0.75 },
+  { x: 334, y: 98, dx: 28, delay: 0.25, size: 1.0 },
+  { x: 172, y: 130, dx: -34, delay: 0.7, size: 0.65 },
+  { x: 312, y: 128, dx: 32, delay: 0.5, size: 0.7 }
+]
 
 function Eye({ side }: { side: 'l' | 'r' }) {
   const cx = side === 'l' ? 198 : 282
@@ -33,10 +48,13 @@ function Eye({ side }: { side: 'l' | 'r' }) {
     <g>
       <ellipse cx={cx} cy={160} rx={24} ry={18} fill="#f4f7ef" stroke={OUTLINE} strokeWidth={4} />
       <g clipPath={clip}>
-        <circle cx={irisX} cy={162} r={12.5} fill="url(#iris)" stroke="#1f7a55" strokeWidth={1.5} />
-        <ellipse className={`c-pupil c-pupil-${side}`} cx={irisX} cy={162} rx={4.5} ry={9.5} fill="#0b0d0c" />
-        <circle cx={irisX - 4.5} cy={157} r={3.4} fill="#fff" />
-        <circle cx={irisX + 4} cy={167} r={1.6} fill="#fff" opacity={0.85} />
+        {/* the gaze group shifts the whole iris for curious glances */}
+        <g className="c-gaze">
+          <circle cx={irisX} cy={162} r={12.5} fill="url(#iris)" stroke="#1f7a55" strokeWidth={1.5} />
+          <ellipse className={`c-pupil c-pupil-${side}`} cx={irisX} cy={162} rx={4.5} ry={9.5} fill="#0b0d0c" />
+          <circle cx={irisX - 4.5} cy={157} r={3.4} fill="#fff" />
+          <circle cx={irisX + 4} cy={167} r={1.6} fill="#fff" opacity={0.85} />
+        </g>
         {/* Upper eyelid: slides down for blinks and sleepy/resting expressions. */}
         <g transform={`rotate(${lidTilt} ${cx} 160)`}>
           <rect className="c-lid" x={cx - 30} y={96} width={60} height={46} fill={BODY} stroke={OUTLINE} strokeWidth={4} />
@@ -46,13 +64,15 @@ function Eye({ side }: { side: 'l' | 'r' }) {
   )
 }
 
-export function CatScene({ state, svgRef, description }: Props) {
+export function CatScene({ state, svgRef, description, stage = 'meet', progress = 0 }: Props) {
   return (
     <svg
       ref={svgRef}
       viewBox="0 0 480 400"
       className={`scene cat-${state}`}
       data-state={state}
+      data-stage={stage}
+      style={{ '--exp-progress': (Math.min(1, Math.max(0, progress)) * 100).toFixed(2) } as CSSProperties}
       role="img"
       aria-label={`PAWSE, a little black cat on a cushion. ${description}`}
     >
@@ -77,9 +97,11 @@ export function CatScene({ state, svgRef, description }: Props) {
       {/* ---- environment ---- */}
       <g aria-hidden="true">
         <circle className="lamp-glow" cx={436} cy={84} r={170} fill="url(#lamp-glow)" />
-        <line x1={436} y1={0} x2={436} y2={44} stroke={RIM} strokeWidth={3} />
-        <path d="M412 44 L460 44 L448 74 L424 74 Z" fill="#2c332f" stroke={OUTLINE} strokeWidth={4} strokeLinejoin="round" />
-        <circle cx={436} cy={80} r={7} fill={LIME} />
+        <g className="lamp">
+          <line x1={436} y1={0} x2={436} y2={44} stroke={RIM} strokeWidth={3} />
+          <path d="M412 44 L460 44 L448 74 L424 74 Z" fill="#2c332f" stroke={OUTLINE} strokeWidth={4} strokeLinejoin="round" />
+          <circle cx={436} cy={80} r={7} fill={LIME} />
+        </g>
 
         <circle className="mote mote-1" cx={90} cy={150} r={2.5} fill={LIME} />
         <circle className="mote mote-2" cx={140} cy={80} r={2} fill={LIME} />
@@ -98,10 +120,12 @@ export function CatScene({ state, svgRef, description }: Props) {
         <path d="M42 326 L86 326 L81 356 L47 356 Z" fill="#3b3330" stroke={OUTLINE} strokeWidth={4} strokeLinejoin="round" />
         <path d="M42 326 L86 326" stroke="#54483f" strokeWidth={4} strokeLinecap="round" />
 
-        {/* yarn ball */}
+        {/* yarn ball (nudges itself now and then) */}
+        <g className="yarn">
         <path d="M398 352 C380 366 340 364 328 354" fill="none" stroke="#7aa22b" strokeWidth={3} strokeLinecap="round" />
         <circle cx={418} cy={340} r={21} fill="#7aa22b" stroke={OUTLINE} strokeWidth={4} />
         <path d="M401 332 C412 321 429 323 435 334 M399 343 C413 333 433 335 437 348 M406 352 C416 346 428 348 432 356" fill="none" stroke="#b6f23a" strokeOpacity={0.75} strokeWidth={2.2} strokeLinecap="round" />
+        </g>
 
         {/* cushion */}
         <path d="M96 328 C96 306 130 300 240 300 C350 300 384 306 384 328 C384 352 350 358 240 358 C130 358 96 352 96 328 Z" fill="#2c332f" stroke={OUTLINE} strokeWidth={5} strokeLinejoin="round" />
@@ -112,6 +136,16 @@ export function CatScene({ state, svgRef, description }: Props) {
 
         {/* breathing halo (follows the breathing animation, not a synchronised breath) */}
         <ellipse className="c-halo" cx={240} cy={236} rx={196} ry={170} fill="none" stroke={LIME} strokeWidth={2} />
+
+        {/* 60-second progress: valid measurement time only */}
+        <path className="c-track" d="M240 40 a216 188 0 0 1 0 376 a216 188 0 0 1 0 -376" fill="none" stroke={LIME} strokeWidth={2} />
+        <path className="c-progress" pathLength={100} d="M240 40 a216 188 0 0 1 0 376 a216 188 0 0 1 0 -376" fill="none" stroke={LIME} strokeWidth={3.5} strokeLinecap="round" />
+
+        {/* a firefly that drifts by every so often */}
+        <g className="firefly">
+          <circle r={9} fill={LIME} opacity={0.16} />
+          <circle r={2.6} fill={LIME} />
+        </g>
       </g>
 
       {/* ---- the cat ---- */}
@@ -185,6 +219,20 @@ export function CatScene({ state, svgRef, description }: Props) {
           <text className="zz zz-2" x={348} y={92} fontSize={26}>z</text>
           <text className="zz zz-3" x={366} y={62} fontSize={32}>Z</text>
         </g>
+      </g>
+
+      {/* a quiet little celebration when the 60 seconds are complete */}
+      <g className="celebrate" aria-hidden="true">
+        {HEARTS.map((h, i) => (
+          <g key={i} transform={`translate(${h.x} ${h.y}) scale(${h.size})`}>
+            <path
+              className="heart"
+              d="M0 -3 C-5 -11 -13 -3 0 8 C13 -3 5 -11 0 -3 Z"
+              fill={LIME}
+              style={{ '--dx': `${h.dx}px`, '--delay': `${h.delay}s` } as CSSProperties}
+            />
+          </g>
+        ))}
       </g>
     </svg>
   )

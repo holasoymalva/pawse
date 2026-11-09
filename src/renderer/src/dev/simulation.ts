@@ -6,23 +6,37 @@ import type { Reading, SessionState } from '@shared/signal'
  * labels everything derived from them as simulated.
  */
 
-export type ScenarioId = 'calm' | 'slow' | 'fast' | 'settling' | 'searching' | 'lost' | 'resting' | 'error'
+export type ScenarioId =
+  | 'slow'
+  | 'normal'
+  | 'fast'
+  | 'settling'
+  | 'searching'
+  | 'lost'
+  | 'resting'
+  | 'error'
+  | 'credits'
 
 export interface Scenario {
   id: ScenarioId
   label: string
 }
 
+/** Breathing presets first (slow / normal / fast), then situations to preview. */
 export const SCENARIOS: readonly Scenario[] = [
-  { id: 'calm', label: 'Calm · 12 br/min, 64 bpm' },
-  { id: 'slow', label: 'Slow · 7 br/min, 55 bpm' },
-  { id: 'fast', label: 'Fast · 24 br/min, 98 bpm' },
+  { id: 'slow', label: 'Slow breathing · 8 br/min, 58 bpm' },
+  { id: 'normal', label: 'Normal breathing · 14 br/min, 68 bpm' },
+  { id: 'fast', label: 'Fast breathing · 22 br/min, 92 bpm' },
   { id: 'settling', label: 'Settling · unstable readings' },
   { id: 'searching', label: 'Searching · no readings yet' },
   { id: 'lost', label: 'Signal lost · readings stop' },
   { id: 'resting', label: 'Resting · no session' },
-  { id: 'error', label: 'Error state' }
+  { id: 'error', label: 'Generic error' },
+  { id: 'credits', label: 'Credits exhausted (error)' }
 ]
+
+/** Dev-only speed-ups for previewing the 60-second experience quickly. */
+export const TIME_SCALES: readonly number[] = [1, 10, 30, 60]
 
 export interface SimContext {
   nowMs: number
@@ -60,12 +74,12 @@ export function buildSimState(id: ScenarioId, ctx: SimContext): SessionState {
     }
   })
   switch (id) {
-    case 'calm':
-      return live(12, 64)
     case 'slow':
-      return live(7, 55)
+      return live(8, 58)
+    case 'normal':
+      return live(14, 68)
     case 'fast':
-      return live(24, 98)
+      return live(22, 92)
     case 'settling':
       return live(15, 72, false)
     case 'searching':
@@ -82,10 +96,17 @@ export function buildSimState(id: ScenarioId, ctx: SimContext): SessionState {
         processingStatus: 'error',
         error: { code: null, name: 'Simulated', message: 'This is a simulated error for visual testing.', retryable: false }
       }
+    case 'credits':
+      return {
+        ...BASE,
+        phase: 'error',
+        processingStatus: 'error',
+        error: { code: 4, name: 'kCreditExhausted', message: 'Simulated: Insufficient credits.', retryable: false }
+      }
   }
 }
 
 /** Scenarios whose readings should keep updating over time. */
 export function updatesOverTime(id: ScenarioId): boolean {
-  return id === 'calm' || id === 'slow' || id === 'fast' || id === 'settling'
+  return id === 'slow' || id === 'normal' || id === 'fast' || id === 'settling'
 }

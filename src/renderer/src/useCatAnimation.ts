@@ -5,6 +5,7 @@ import { frameToCssVars } from '@shared/animation/cssVars'
 import { PersonalityEngine } from '@shared/animation/personality'
 import { deriveCatState, type CatState } from '@shared/animation/catState'
 import { CatStateTracker, type StateTransition } from '@shared/animation/catStateTracker'
+import type { Stage } from '@shared/experience/machine'
 import type { SessionState } from '@shared/signal'
 
 export interface CatView {
@@ -27,11 +28,14 @@ const STATE_POLL_MS = 250
  */
 export function useCatAnimation(
   target: RefObject<SVGSVGElement | null>,
-  session: Pick<SessionState, 'phase' | 'signal'>
+  session: Pick<SessionState, 'phase' | 'signal'>,
+  stage: Stage = 'meet'
 ): CatView {
   const sessionRef = useRef(session)
+  const stageRef = useRef(stage)
   useEffect(() => {
     sessionRef.current = session
+    stageRef.current = stage
   })
 
   const [view, setView] = useState<{ state: CatState; history: StateTransition[] }>({
@@ -49,7 +53,12 @@ export function useCatAnimation(
     const tick = (): void => {
       const now = Date.now()
       const before = tracker.state
-      const next = tracker.update(deriveCatState(sessionRef.current, now), now)
+      let raw = deriveCatState(sessionRef.current, now)
+      // Between pressing "Wake up" and the SDK reporting progress, the cat is already curious.
+      if (stageRef.current === 'connecting' && raw === 'idle') raw = 'searching'
+      // After the experience the camera is off and the cat settles down to rest.
+      if (stageRef.current === 'peace') raw = 'idle'
+      const next = tracker.update(raw, now)
       if (next !== before) setView({ state: next, history: [...tracker.history] })
     }
     const first = window.setTimeout(tick, 0)
@@ -69,12 +78,16 @@ export function useCatAnimation(
     const personality = new PersonalityEngine({ seed: seed ^ 0x5bd1e995, motionScale })
     engineRef.current = engine
     personalityRef.current = personality
+    let settle = 0
     const loop = new AnimationLoop(
       engine,
       (frame, dt) => {
         const el = target.current
         if (!el) return
-        const vars = frameToCssVars(frame, personality.step(dt))
+        // Ease into / out of the peaceful resting pose.
+        const target01 = stageRef.current === 'peace' ? 1 : 0
+        settle += (target01 - settle) * (1 - Math.exp(-dt / 1.1))
+        const vars = frameToCssVars(frame, personality.step(dt), settle)
         for (const [name, value] of Object.entries(vars)) el.style.setProperty(name, value)
       },
       {

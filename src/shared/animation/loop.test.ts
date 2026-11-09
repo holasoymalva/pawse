@@ -132,7 +132,7 @@ describe('frameToCssVars with personality', () => {
     heartbeat: 0.4, blink: 0.2, earLeft: 0.2, earRight: -0.2
   }
   const p: PersonalityFrame = {
-    tail: 6, headTilt: -4, pupil: 1.2, smile: 0.7, zzz: 0, whisker: 1, earBoostLeft: 0.3, earBoostRight: 0, delight: 0
+    tail: 6, headTilt: -4, headShiftX: 2, gazeX: 0.5, gazeY: -0.2, lid: 0.1, pupil: 1.2, smile: 0.7, zzz: 0, whisker: 1, earBoostLeft: 0.3, earBoostRight: 0, delight: 0
   }
   it('adds ambient channels and layers ear boosts onto the engine ears', () => {
     const v = frameToCssVars(frame, p)
@@ -145,5 +145,35 @@ describe('frameToCssVars with personality', () => {
     const v = frameToCssVars(frame, { ...p, earBoostLeft: 5 })
     expect(parseFloat(v['--cat-ear-l']!)).toBeCloseTo(14, 1)
     expect(v['--cat-glow']).toBe('0.400')
+  })
+})
+
+describe('settled resting pose (end of the experience)', () => {
+  const frame = {
+    state: 'idle' as const, breath: 0.2, breathSource: 'decorative' as const, breathBpm: 12,
+    heartbeat: 0, blink: 0, earLeft: 0, earRight: 0
+  }
+  it('is a no-op at 0 and blends in a peaceful pose at 1', () => {
+    const rest = frameToCssVars(frame, undefined, 0)
+    const settled = frameToCssVars(frame, undefined, 1)
+    expect(rest['--cat-blink']).toBe('0.000')
+    expect(settled['--cat-blink']).toBe('1.000') // eyes closed
+    expect(parseFloat(settled['--cat-head-y']!)).toBeGreaterThan(parseFloat(rest['--cat-head-y']!) + 10)
+    expect(parseFloat(settled['--cat-ear-l']!)).toBeLessThan(parseFloat(rest['--cat-ear-l']!))
+    expect(parseFloat(settled['--cat-tail']!)).toBeLessThan(parseFloat(rest['--cat-tail']!))
+    expect(Number(settled['--cat-smile'])).toBeGreaterThan(0.8)
+    expect(Number(settled['--cat-zzz'])).toBeGreaterThan(0.8)
+  })
+  it('blends smoothly and clamps out-of-range input', () => {
+    const half = frameToCssVars(frame, undefined, 0.5)
+    expect(Number(half['--cat-blink'])).toBe(0.5)
+    expect(frameToCssVars(frame, undefined, 9)['--cat-blink']).toBe('1.000')
+    expect(frameToCssVars(frame, undefined, -3)['--cat-blink']).toBe('0.000')
+  })
+  it('exposes gaze and head-shift variables in px', () => {
+    const v = frameToCssVars(frame, { ...{ tail: 0, headTilt: 0, headShiftX: 2, gazeX: 1, gazeY: -1, lid: 0.6, pupil: 1, smile: 0, zzz: 0, whisker: 0, earBoostLeft: 0, earBoostRight: 0, delight: 0 } })
+    expect(v['--cat-gaze-x']).toMatch(/px$/)
+    expect(v['--cat-head-x']).toBe('2.00px')
+    expect(Number(v['--cat-blink'])).toBe(0.6)
   })
 })
