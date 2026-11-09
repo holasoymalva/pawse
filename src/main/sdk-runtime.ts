@@ -26,6 +26,7 @@ export const loadSdkRuntime = async (): Promise<SdkRuntime> => {
         useCameraDefault: () => instance.useCamera(sdk.CameraSelection.default),
         start: () => instance.start(),
         stopAsync: () => instance.stopAsync(),
+        reset: () => instance.reset(),
         destroy: () => instance.destroy()
       } as ReturnType<SdkRuntime['create']>
     },

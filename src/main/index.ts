@@ -1,14 +1,17 @@
 import { join } from 'node:path'
 import { app, BrowserWindow, ipcMain, session, systemPreferences } from 'electron'
-import { IPC, type StartRequest } from '../shared/ipc'
+import { IPC } from '../shared/ipc'
 import { loadApiKey } from './config'
+import { registerIpc } from './ipc'
 import { loadSdkRuntime } from './sdk-runtime'
 import { SmartSpectraService } from './smartspectra-service'
 
 const service = new SmartSpectraService({
   apiKey: loadApiKey(join(app.getAppPath(), '.env')),
   loadRuntime: loadSdkRuntime,
-  ensureCameraAccess
+  ensureCameraAccess,
+  // Timing/stability statistics are only collected in development builds.
+  diagnostics: !app.isPackaged
 })
 
 /** Native capture in the main process needs OS camera permission for this app. */
@@ -63,20 +66,10 @@ function createWindow(): BrowserWindow {
   return win
 }
 
-function registerIpc(): void {
-  ipcMain.handle(IPC.getState, () => service.getState())
-  ipcMain.handle(IPC.start, (_event, request: StartRequest) => {
-    // Measurement only ever begins after explicit consent from the UI.
-    if (request?.consent !== true) throw new Error('Consent is required to start a session.')
-    return service.start()
-  })
-  ipcMain.handle(IPC.stop, () => service.stop())
-}
-
 void app.whenReady().then(async () => {
   // The renderer never needs the camera or any other permission.
   session.defaultSession.setPermissionRequestHandler((_wc, _permission, callback) => callback(false))
-  registerIpc()
+  registerIpc(ipcMain, service)
   await service.probe()
   createWindow()
   app.on('activate', () => {

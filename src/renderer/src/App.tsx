@@ -1,7 +1,8 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Availability } from '@shared/signal'
 import { CAT_STATE_LABEL } from '@shared/animation/catState'
 import { CatPlaceholder } from './components/CatPlaceholder'
+import { DiagnosticsPanel } from './components/DiagnosticsPanel'
 import { Readout } from './components/Readout'
 import { useCatAnimation } from './useCatAnimation'
 import { useSession } from './useSession'
@@ -25,15 +26,35 @@ function availabilityMessage(a: Availability): { title: string; body: string } |
   }
 }
 
+const BREATH_LABEL = {
+  live: 'live reading',
+  held: 'last reading (paused)',
+  decorative: 'decorative, not a measurement'
+} as const
+const HEART_LABEL = { live: 'live reading', none: 'off' } as const
+
 export function App() {
   const { state, nowMs, busy, start, stop } = useSession()
   const [consent, setConsent] = useState(false)
   const catRef = useRef<SVGSVGElement>(null)
-  const catState = useCatAnimation(
+  const { catState, motion, history } = useCatAnimation(
     catRef,
-    state ?? { phase: 'idle', signal: { pulse: null, breathing: null } },
-    nowMs
+    state ?? { phase: 'idle', signal: { pulse: null, breathing: null } }
   )
+  const [diagOpen, setDiagOpen] = useState(false)
+
+  // Development diagnostics: Cmd/Ctrl+Shift+D. Main returns null in packaged builds.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (!(e.metaKey || e.ctrlKey) || !e.shiftKey || e.key.toLowerCase() !== 'd') return
+      e.preventDefault()
+      void window.pawse.getDiagnostics().then((d) => {
+        if (d) setDiagOpen((open) => !open)
+      })
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   if (!state) return <main className="app"><p className="muted">Loading…</p></main>
 
@@ -54,6 +75,14 @@ export function App() {
         <div className="cat-wrap">
           <CatPlaceholder state={catState} svgRef={catRef} />
           <span className={`cat-state cat-state-${catState}`} role="status">{CAT_STATE_LABEL[catState]}</span>
+          <div className="chips" aria-label="What the motion is based on">
+            <span className={`chip chip-${motion.breath}`} data-testid="chip-breath">
+              Breathing · {BREATH_LABEL[motion.breath]}
+            </span>
+            <span className={`chip chip-${motion.heart}`} data-testid="chip-heart">
+              Heartbeat · {HEART_LABEL[motion.heart]}
+            </span>
+          </div>
         </div>
         <div className="readouts">
           <Readout label="Breathing" unit="br/min" reading={state.signal.breathing} nowMs={nowMs} running={running} />
@@ -64,7 +93,8 @@ export function App() {
       {sessionOn && (
         <div className="status" role="status">
           <span className={`dot ${running ? 'on' : ''}`} />
-          {starting && 'Starting camera and SmartSpectra…'}
+          {starting && state.recoveryAttempt > 0 && `Reconnecting to SmartSpectra… (attempt ${state.recoveryAttempt})`}
+          {starting && state.recoveryAttempt === 0 && 'Starting camera and SmartSpectra…'}
           {running && 'Camera is on · measuring'}
           {stopping && 'Stopping and releasing the camera…'}
         </div>
@@ -79,6 +109,13 @@ export function App() {
 
       {sessionOn && state.validation && !state.validation.ok && (
         <p className="hint" role="status">{state.validation.hint}</p>
+      )}
+
+      {sessionOn && state.notice && (
+        <div className="notice" role="status">
+          <strong>SDK notice · {state.notice.name}</strong>
+          <p>{state.notice.message} The session is still running.</p>
+        </div>
       )}
 
       {state.error && (
@@ -101,7 +138,7 @@ export function App() {
           <ul>
             <li>PAWSE uses your camera to read breathing and pulse from your face and upper body, using Presage SmartSpectra.</li>
             <li>Video is processed on this computer by the SDK. PAWSE does not save frames or measurements.</li>
-            <li>SmartSpectra contacts Presage&apos;s servers to validate the API key. Optional usage telemetry is turned off in PAWSE.</li>
+            <li>SmartSpectra connects to Presage&apos;s servers to authorise the API key and may download its analysis model. PAWSE turns off the SDK&apos;s optional usage telemetry. The README explains what is and is not verified.</li>
             <li>Nothing is measured until you press Start, and the camera is released when you press Stop.</li>
           </ul>
           <label className="check">
@@ -122,6 +159,8 @@ export function App() {
           </button>
         )}
       </div>
+
+      {diagOpen && <DiagnosticsPanel session={state} history={history} catState={catState} />}
 
       <footer className="disclaimer">
         For general wellness and informational purposes only. PAWSE is not a medical device and

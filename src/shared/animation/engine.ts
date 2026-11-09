@@ -16,13 +16,36 @@ export interface EngineInput {
   pulseBpm: number | null
 }
 
+export type BreathSource = 'live' | 'held' | 'decorative'
+export type HeartSource = 'live' | 'none'
+
+/**
+ * What the current motion is based on, so the UI can distinguish real readings
+ * from decorative animation.
+ *
+ * - breath 'live':       cycle length comes from a current breathing-rate reading
+ * - breath 'held':       signal is stale; the last reading is held at low amplitude
+ * - breath 'decorative': no usable breathing rate; fixed ambient cycle (not a measurement)
+ * - heart 'live':        heartbeat pulses at a current pulse-rate reading
+ * - heart 'none':        no heartbeat animation is shown
+ */
+export function describeMotion(input: EngineInput): { breath: BreathSource; heart: HeartSource } {
+  const breathingOk = sanitizeRate('breathing', input.breathingBpm) !== null
+  const pulseOk = sanitizeRate('pulse', input.pulseBpm) !== null
+  const measuring = input.state === 'settling' || input.state === 'connected'
+  return {
+    breath: measuring && breathingOk ? 'live' : input.state === 'stale' && breathingOk ? 'held' : 'decorative',
+    heart: measuring && pulseOk ? 'live' : 'none'
+  }
+}
+
 /** One rendered animation frame. All values are unitless and bounded. */
 export interface AnimationFrame {
   state: CatState
   /** 0 (exhaled) … 1 (inhaled), already multiplied by the current breath amplitude. */
   breath: number
-  /** 'measured' when the cycle length comes from a real reading; 'ambient' otherwise. */
-  breathSource: 'measured' | 'ambient'
+  /** Where the breathing cycle length comes from (see describeMotion). */
+  breathSource: BreathSource
   /** Smoothed rate currently driving the cycle (breaths/min). */
   breathBpm: number
   /** 0 … 1 heartbeat pulse, already scaled by amplitude (0 when no pulse is shown). */
@@ -139,6 +162,7 @@ export class AnimationEngine {
     const mood = MOODS[state]
     this.time += dt
 
+    const source = describeMotion(this.input)
     const measuredBreath = mood.useMeasuredBreath && breathingBpm !== null
     const breathTarget = measuredBreath ? breathingBpm : AMBIENT_BREATH_BPM
     const showHeart = mood.heartAmp > 0 && pulseBpm !== null
@@ -162,7 +186,7 @@ export class AnimationEngine {
     return {
       state,
       breath: breathCurve(this.breathPhase) * this.breathAmp * s,
-      breathSource: measuredBreath ? 'measured' : 'ambient',
+      breathSource: source.breath,
       breathBpm: this.breathBpm,
       heartbeat: heartbeatEnvelope(this.heartPhase) * this.heartAmp * s,
       blink: Math.min(1, Math.max(blinkShape, 1 - this.eyeOpen)),

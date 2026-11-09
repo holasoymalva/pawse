@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { CAT_STATES } from './catState'
-import { AnimationEngine, MAX_STEP_SECONDS, type AnimationFrame, type EngineInput } from './engine'
+import { AnimationEngine, describeMotion, MAX_STEP_SECONDS, type AnimationFrame, type EngineInput } from './engine'
 
 const DT = 1 / 60
 
@@ -54,17 +54,19 @@ describe('breathing cycle from measured rate', () => {
   it('reports measured vs ambient source honestly', () => {
     const e = new AnimationEngine()
     e.setInput({ state: 'connected', breathingBpm: 15, pulseBpm: 70 })
-    expect(e.step(DT).breathSource).toBe('measured')
+    expect(e.step(DT).breathSource).toBe('live')
+    e.setInput({ state: 'stale', breathingBpm: 15, pulseBpm: 70 })
+    expect(e.step(DT).breathSource).toBe('held')
     e.setInput({ state: 'searching', breathingBpm: 15, pulseBpm: 70 })
-    expect(e.step(DT).breathSource).toBe('ambient')
+    expect(e.step(DT).breathSource).toBe('decorative')
     e.setInput({ state: 'connected', breathingBpm: null, pulseBpm: 70 })
-    expect(e.step(DT).breathSource).toBe('ambient')
+    expect(e.step(DT).breathSource).toBe('decorative')
   })
   it('ignores implausible rates instead of animating them', () => {
     const e = new AnimationEngine()
     e.setInput({ state: 'connected', breathingBpm: 999, pulseBpm: NaN })
     const f = run(e, 5).at(-1)!
-    expect(f.breathSource).toBe('ambient')
+    expect(f.breathSource).toBe('decorative')
     expect(f.heartbeat).toBe(0)
   })
 })
@@ -227,5 +229,29 @@ describe('ambient blinking and ear movement', () => {
     const pf = Math.max(...run(full, 20).map((f) => f.breath))
     const pc = Math.max(...run(calm, 20).map((f) => f.breath))
     expect(pc).toBeCloseTo(pf * 0.4, 1)
+  })
+})
+
+describe('describeMotion (live vs decorative labelling)', () => {
+  const m = (state: EngineInput['state'], b: number | null, p: number | null) =>
+    describeMotion({ state, breathingBpm: b, pulseBpm: p })
+
+  it('labels motion as live only while measuring with a valid reading', () => {
+    expect(m('connected', 15, 70)).toEqual({ breath: 'live', heart: 'live' })
+    expect(m('settling', 15, 70)).toEqual({ breath: 'live', heart: 'live' })
+  })
+  it('treats missing or implausible readings as decorative / none', () => {
+    expect(m('connected', null, null)).toEqual({ breath: 'decorative', heart: 'none' })
+    expect(m('connected', 999, 5)).toEqual({ breath: 'decorative', heart: 'none' })
+    expect(m('connected', 15, null)).toEqual({ breath: 'live', heart: 'none' })
+  })
+  it('never calls idle, searching or error motion live', () => {
+    for (const s of ['idle', 'searching', 'error'] as const) {
+      expect(m(s, 15, 70)).toEqual({ breath: 'decorative', heart: 'none' })
+    }
+  })
+  it('stale holds the last reading and shows no heartbeat', () => {
+    expect(m('stale', 15, 70)).toEqual({ breath: 'held', heart: 'none' })
+    expect(m('stale', null, 70)).toEqual({ breath: 'decorative', heart: 'none' })
   })
 })

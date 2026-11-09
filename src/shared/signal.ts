@@ -74,6 +74,14 @@ export interface SessionError {
 
 export type SessionPhase = 'idle' | 'starting' | 'running' | 'stopping' | 'error'
 
+/** A transient, non-fatal SDK problem the session is riding out. */
+export interface SessionNotice {
+  code: number | null
+  name: string
+  message: string
+  atMs: number
+}
+
 export type Availability =
   | { kind: 'ready' }
   | { kind: 'missing-key' }
@@ -88,4 +96,8 @@ export interface SessionState {
   validation: ValidationMessage | null
   signal: SignalSnapshot
   error: SessionError | null
+  /** Non-fatal SDK warning (e.g. a retryable error). Cleared when readings resume. */
+  notice: SessionNotice | null
+  /** 0 normally; 1..n while the service is trying to recover the SDK pipeline. */
+  recoveryAttempt: number
 }

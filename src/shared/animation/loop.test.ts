@@ -92,7 +92,7 @@ describe('AnimationLoop lifecycle and cleanup', () => {
 describe('frameToCssVars', () => {
   it('produces bounded, subtle transforms', () => {
     const vars = frameToCssVars({
-      state: 'connected', breath: 1, breathSource: 'measured', breathBpm: 14,
+      state: 'connected', breath: 1, breathSource: 'live', breathBpm: 14,
       heartbeat: 1, blink: 1, earLeft: 1, earRight: -1
     })
     expect(Number(vars['--cat-scale-y'])).toBeLessThanOrEqual(1.05)
@@ -102,7 +102,7 @@ describe('frameToCssVars', () => {
   })
   it('neutral frame leaves the cat untouched', () => {
     const v = frameToCssVars({
-      state: 'idle', breath: 0, breathSource: 'ambient', breathBpm: 12,
+      state: 'idle', breath: 0, breathSource: 'decorative', breathBpm: 12,
       heartbeat: 0, blink: 0, earLeft: 0, earRight: 0
     })
     expect(v['--cat-scale-y']).toBe('1.0000')
