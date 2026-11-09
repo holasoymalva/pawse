@@ -24,10 +24,11 @@ npm ci        # or npm install
 ```
 
 npm 11 blocks dependency install scripts until approved. `koffi` and `protobufjs` (required by the SDK) are
-approved in `package.json` (`allowScripts`). If `node_modules/electron/dist` is missing afterwards, run:
+approved in `package.json` (`allowScripts`). Electron 45 no longer downloads its binary during install, so this
+project's own `postinstall` runs `install-electron`. If `node_modules/electron/dist` is still missing, run:
 
 ```bash
-node node_modules/electron/install.js
+npx install-electron
 ```
 
 ## Configure
