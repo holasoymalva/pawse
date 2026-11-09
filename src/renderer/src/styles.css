@@ -1,0 +1,49 @@
+:root {
+  --bg: #1b1d1c;
+  --panel: #242826;
+  --line: #3a3f3c;
+  --text: #ecefe8;
+  --muted: #9aa39b;
+  --lime: #b6f23a;
+  --danger: #ff8a7a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Marker Felt', 'Bradley Hand', 'Segoe Print', ui-rounded, system-ui, sans-serif;
+}
+.app { max-width: 640px; margin: 0 auto; padding: 28px 24px 20px; display: flex; flex-direction: column; gap: 16px; min-height: 100vh; }
+.brand { text-align: center; }
+.brand h1 { margin: 0; font-size: 34px; letter-spacing: 6px; color: var(--lime); transform: rotate(-1.5deg); }
+.muted { color: var(--muted); margin: 4px 0 0; }
+.stage { display: grid; grid-template-columns: 180px 1fr; gap: 20px; align-items: center; background: var(--panel); border: 2px solid var(--line); border-radius: 22px 18px 24px 16px; padding: 18px; }
+.cat { width: 100%; color: var(--lime); }
+.readouts { display: grid; gap: 12px; }
+.readout { display: flex; flex-direction: column; }
+.readout.dim .readout-value { opacity: 0.45; }
+.readout-label { color: var(--muted); font-size: 14px; }
+.readout-value { font-size: 44px; line-height: 1.1; color: var(--lime); }
+.readout-value small { font-size: 15px; color: var(--muted); margin-left: 6px; }
+.readout-note { font-size: 13px; color: var(--muted); }
+.status { display: flex; align-items: center; gap: 10px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
+.dot.on { background: var(--lime); box-shadow: 0 0 8px var(--lime); }
+.hint { margin: 0; padding: 10px 14px; border: 2px dashed var(--lime); border-radius: 14px; color: var(--lime); }
+.notice { border: 2px solid var(--line); border-radius: 14px; padding: 10px 14px; }
+.notice p { margin: 4px 0 0; color: var(--muted); }
+.notice.error { border-color: var(--danger); }
+.notice.error strong { color: var(--danger); }
+.consent { background: var(--panel); border: 2px solid var(--line); border-radius: 16px; padding: 14px 18px; }
+.consent h2 { margin: 0 0 6px; font-size: 18px; }
+.consent ul { margin: 0 0 10px; padding-left: 20px; color: var(--muted); font-size: 14px; line-height: 1.45; }
+.check { display: flex; gap: 10px; align-items: center; cursor: pointer; }
+.check input { accent-color: var(--lime); width: 18px; height: 18px; }
+.actions { display: flex; justify-content: center; }
+button { font: inherit; font-size: 18px; padding: 10px 28px; border-radius: 16px 12px 18px 12px; border: 2px solid var(--lime); cursor: pointer; }
+button.primary { background: var(--lime); color: #151714; }
+button.secondary { background: transparent; color: var(--lime); }
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+.disclaimer { margin-top: auto; text-align: center; font-size: 12px; color: var(--muted); }
