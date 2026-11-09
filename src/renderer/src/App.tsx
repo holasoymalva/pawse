@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { Availability } from '@shared/signal'
+import { CAT_STATE_LABEL } from '@shared/animation/catState'
 import { CatPlaceholder } from './components/CatPlaceholder'
 import { Readout } from './components/Readout'
+import { useCatAnimation } from './useCatAnimation'
 import { useSession } from './useSession'
 
 function availabilityMessage(a: Availability): { title: string; body: string } | null {
@@ -26,6 +28,12 @@ function availabilityMessage(a: Availability): { title: string; body: string } |
 export function App() {
   const { state, nowMs, busy, start, stop } = useSession()
   const [consent, setConsent] = useState(false)
+  const catRef = useRef<SVGSVGElement>(null)
+  const catState = useCatAnimation(
+    catRef,
+    state ?? { phase: 'idle', signal: { pulse: null, breathing: null } },
+    nowMs
+  )
 
   if (!state) return <main className="app"><p className="muted">Loading…</p></main>
 
@@ -43,7 +51,10 @@ export function App() {
       </header>
 
       <section className="stage">
-        <CatPlaceholder active={running} />
+        <div className="cat-wrap">
+          <CatPlaceholder state={catState} svgRef={catRef} />
+          <span className={`cat-state cat-state-${catState}`} role="status">{CAT_STATE_LABEL[catState]}</span>
+        </div>
         <div className="readouts">
           <Readout label="Breathing" unit="br/min" reading={state.signal.breathing} nowMs={nowMs} running={running} />
           <Readout label="Pulse" unit="bpm" reading={state.signal.pulse} nowMs={nowMs} running={running} />
@@ -57,6 +68,13 @@ export function App() {
           {running && 'Camera is on · measuring'}
           {stopping && 'Stopping and releasing the camera…'}
         </div>
+      )}
+
+      {running && (
+        <p className="muted small">
+          The cat follows your measured breathing and pulse <em>rate</em>. It is not synchronised to
+          each individual breath or heartbeat.
+        </p>
       )}
 
       {sessionOn && state.validation && !state.validation.ok && (

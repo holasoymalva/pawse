@@ -3,8 +3,9 @@
 A tiny desktop cat companion driven by real breathing and pulse readings from the
 [Presage SmartSpectra SDK](https://smartspectra.presagetech.com/). Built for the SmartSpectra SDK Challenge.
 
-> **Phase 1 (this repo state):** real SDK integration + minimal UI with a placeholder cat.
-> The animated hand-drawn cat is Phase 2.
+> **Phase 1:** real SDK integration + minimal UI.
+> **Phase 2 (this repo state):** deterministic animation engine driving a placeholder cat.
+> The final hand-drawn artwork is still to come.
 
 **For general wellness and informational purposes only.** PAWSE is not a medical device. It does not
 diagnose, treat or monitor any condition, and it makes no stress or emotion inferences.
@@ -83,6 +84,27 @@ SDK usage (verified against `@smartspectra/node-sdk` 3.4.0):
 - A new SDK instance is created per session; Stop (or any SDK error, or quitting) runs `stopAsync()` then `destroy()`.
 - App policy (not SDK values): readings outside 30–220 BPM / 4–60 br/min are discarded as invalid, and a
   reading with no update for 10 s is shown as stale. Unstable readings (`stable: false`) are shown dimmed as "Settling…".
+
+## Animation engine (Phase 2)
+
+Pure, DOM-free modules in `src/shared/animation/`, driven from the renderer by `useCatAnimation`
+(requestAnimationFrame → CSS variables on the SVG; no React re-render per frame).
+
+- `signalMapping.ts`: breathing cycle = `60 / breathsPerMinute` seconds; pulse period = `60 / bpm`.
+  Rates outside the plausible ranges are discarded, never animated.
+- `catState.ts`: `idle · searching · settling · connected · stale · error`, derived only from real session
+  state (`settling` = fresh readings but none `stable` per the SDK; `stale` = no update for 10 s).
+- `engine.ts`: phase accumulation (`phase += dt × frequency`) plus first-order smoothing of the rate
+  (τ = 2.5 s) and of per-state amplitudes (τ = 0.6 s), so irregular SDK updates glide instead of jumping.
+  Same seed + inputs + steps = identical frames. Frame steps are capped at 0.1 s.
+- Blinking and ear twitches are ambient: scheduled by a seeded RNG, independent of the signals.
+- `loop.ts`: scheduler-injected loop; `dispose()` cancels the pending frame and disables the engine.
+- `prefers-reduced-motion` scales motion down to 40 %.
+
+**What the animation does and does not claim.** It follows the measured *rate*. It is not synchronised to
+individual breaths or heartbeats (the SDK reports a rate estimate, not onsets). When no breathing rate is
+available (resting, searching, error) the cat uses a fixed decorative 12/min cycle, which is not a
+measurement and is reported as `breathSource: 'ambient'` by the engine.
 
 ## Privacy and data handling
 
