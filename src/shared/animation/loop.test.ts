@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { AnimationEngine } from './engine'
 import { AnimationLoop, type Scheduler } from './loop'
 import { frameToCssVars } from './cssVars'
+import type { PersonalityFrame } from './personality'
 
 /** Manual scheduler: tracks pending callbacks so cleanup can be asserted. */
 function fakeScheduler() {
@@ -89,6 +90,19 @@ describe('AnimationLoop lifecycle and cleanup', () => {
   })
 })
 
+describe('AnimationLoop dt', () => {
+  it('passes the step dt to the frame callback', () => {
+    const { scheduler, tick } = fakeScheduler()
+    const dts: number[] = []
+    const loop = new AnimationLoop(new AnimationEngine(), (_f, dt) => dts.push(dt), scheduler)
+    loop.start()
+    tick(100)
+    tick(116)
+    expect(dts[0]).toBe(0)
+    expect(dts[1]).toBeCloseTo(0.016)
+  })
+})
+
 describe('frameToCssVars', () => {
   it('produces bounded, subtle transforms', () => {
     const vars = frameToCssVars({
@@ -97,7 +111,8 @@ describe('frameToCssVars', () => {
     })
     expect(Number(vars['--cat-scale-y'])).toBeLessThanOrEqual(1.05)
     expect(Number(vars['--cat-heart'])).toBeLessThanOrEqual(1.06)
-    expect(Number(vars['--cat-eye-y'])).toBeGreaterThan(0)
+    expect(Number(vars['--cat-blink'])).toBe(1)
+    expect(Number(vars['--cat-belly'])).toBeLessThanOrEqual(1.11)
     expect(vars['--cat-ear-l']).toMatch(/deg$/)
   })
   it('neutral frame leaves the cat untouched', () => {
@@ -106,6 +121,29 @@ describe('frameToCssVars', () => {
       heartbeat: 0, blink: 0, earLeft: 0, earRight: 0
     })
     expect(v['--cat-scale-y']).toBe('1.0000')
-    expect(v['--cat-eye-y']).toBe('1.000')
+    expect(v['--cat-blink']).toBe('0.000')
+    expect(v['--cat-pupil']).toBe('1.000')
+  })
+})
+
+describe('frameToCssVars with personality', () => {
+  const frame = {
+    state: 'connected' as const, breath: 0.5, breathSource: 'live' as const, breathBpm: 14,
+    heartbeat: 0.4, blink: 0.2, earLeft: 0.2, earRight: -0.2
+  }
+  const p: PersonalityFrame = {
+    tail: 6, headTilt: -4, pupil: 1.2, smile: 0.7, zzz: 0, whisker: 1, earBoostLeft: 0.3, earBoostRight: 0, delight: 0
+  }
+  it('adds ambient channels and layers ear boosts onto the engine ears', () => {
+    const v = frameToCssVars(frame, p)
+    expect(v['--cat-tail']).toBe('6.00deg')
+    expect(v['--cat-tilt']).toBe('-4.00deg')
+    expect(v['--cat-smile']).toBe('0.700')
+    expect(parseFloat(v['--cat-ear-l']!)).toBeCloseTo(0.5 * 14, 1)
+  })
+  it('clamps ears and maps heartbeat to glow', () => {
+    const v = frameToCssVars(frame, { ...p, earBoostLeft: 5 })
+    expect(parseFloat(v['--cat-ear-l']!)).toBeCloseTo(14, 1)
+    expect(v['--cat-glow']).toBe('0.400')
   })
 })

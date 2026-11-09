@@ -6,12 +6,15 @@ interface Props {
   reading: Reading | null
   nowMs: number
   running: boolean
+  /** Dev-only simulation: label values as simulated. */
+  simulated?: boolean
 }
 
-export function Readout({ label, unit, reading, nowMs, running }: Props) {
+export function Readout({ label, unit, reading, nowMs, running, simulated = false }: Props) {
   const freshness = freshnessOf(reading, nowMs)
-  const note =
-    freshness === 'none'
+  const note = simulated
+    ? 'Simulated'
+    : freshness === 'none'
       ? running
         ? 'Waiting for a measurement…'
         : 'Not measuring'

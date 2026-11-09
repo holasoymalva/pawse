@@ -12,7 +12,7 @@ export class AnimationLoop {
 
   constructor(
     private readonly engine: AnimationEngine,
-    private readonly onFrame: (frame: AnimationFrame) => void,
+    private readonly onFrame: (frame: AnimationFrame, dtSeconds: number) => void,
     private readonly scheduler: Scheduler
   ) {}
 
@@ -43,7 +43,7 @@ export class AnimationLoop {
     if (this.handle === null) return
     const dt = this.last === null ? 0 : (timestampMs - this.last) / 1000
     this.last = timestampMs
-    this.onFrame(this.engine.step(dt))
+    this.onFrame(this.engine.step(dt), dt)
     if (this.handle !== null) this.handle = this.scheduler.request(this.tick)
   }
 }
