@@ -8,6 +8,7 @@ const api: PawseApi = {
   getState: () => ipcRenderer.invoke(IPC.getState),
   start: (request) => ipcRenderer.invoke(IPC.start, request),
   stop: () => ipcRenderer.invoke(IPC.stop),
+  getDiagnostics: () => ipcRenderer.invoke(IPC.getDiagnostics),
   onState: (listener) => {
     const handler = (_event: unknown, state: SessionState): void => listener(state)
     ipcRenderer.on(IPC.stateChanged, handler)

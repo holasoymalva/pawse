@@ -47,3 +47,38 @@ button.primary { background: var(--lime); color: #151714; }
 button.secondary { background: transparent; color: var(--lime); }
 button:disabled { opacity: 0.4; cursor: not-allowed; }
 .disclaimer { margin-top: auto; text-align: center; font-size: 12px; color: var(--muted); }
+
+/* --- cat animation (values set per frame by useCatAnimation) --- */
+.cat-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.cat-state { font-size: 13px; color: var(--muted); }
+.cat-state-connected { color: var(--lime); }
+.cat-state-error { color: var(--danger); }
+.cat { overflow: visible; }
+.cat-breath { transform-box: view-box; transform-origin: 101px 150px; transform: scale(var(--cat-scale-x, 1), var(--cat-scale-y, 1)); }
+.cat-heart { transform-box: view-box; transform-origin: 101px 132px; transform: scale(var(--cat-heart, 1)); }
+.cat-eye { transform-box: view-box; transform-origin: 0 94px; transform: scaleY(var(--cat-eye-y, 1)); }
+.cat-eye-l { transform-origin: 84px 94px; }
+.cat-eye-r { transform-origin: 117px 94px; }
+.cat-ear { transform-box: view-box; }
+.cat-ear-l { transform-origin: 62px 80px; transform: rotate(var(--cat-ear-l, 0deg)); }
+.cat-ear-r { transform-origin: 140px 80px; transform: rotate(var(--cat-ear-r, 0deg)); }
+.cat-error { color: var(--danger); }
+.cat-stale { opacity: 0.75; }
+.small { font-size: 12px; margin: 0; }
+
+/* --- live vs decorative chips and dev diagnostics --- */
+.chips { display: flex; flex-direction: column; gap: 4px; align-items: center; margin-top: 2px; }
+.chip { font-size: 11px; padding: 2px 9px; border-radius: 10px; border: 1.5px solid var(--line); color: var(--muted); }
+.chip-live { border-color: var(--lime); color: var(--lime); }
+.chip-held { border-style: dashed; }
+.chip-decorative, .chip-none { opacity: 0.8; }
+.diag { background: var(--panel); border: 2px dashed var(--line); border-radius: 14px; padding: 10px 14px; font-family: ui-monospace, Menlo, monospace; font-size: 11px; }
+.diag h3 { margin: 0 0 6px; font-size: 13px; color: var(--lime); }
+.diag h3 small { color: var(--muted); font-weight: normal; margin-left: 6px; }
+.diag h4 { margin: 8px 0 2px; color: var(--text); }
+.diag dl { margin: 0; display: grid; grid-template-columns: 150px 1fr; gap: 2px 10px; }
+.diag dt { color: var(--muted); }
+.diag dd { margin: 0; word-break: break-word; }
+.diag-copy { font-size: 12px; padding: 4px 12px; margin-top: 8px; border-radius: 10px; background: transparent; color: var(--lime); }
+.diag-json { width: 100%; height: 120px; margin-top: 6px; background: var(--bg); color: var(--text); font: inherit; }
+.notice.warn { border-color: var(--lime); }
