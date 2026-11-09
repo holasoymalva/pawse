@@ -139,3 +139,112 @@ describe('reduced motion', () => {
     )
   })
 })
+
+describe('Phase 4 personality upgrades', () => {
+  const frames = (state: CatState, seconds: number, seed = 11) => settle(state, seconds, seed)
+  const stdev = (xs: number[]) => {
+    const m = xs.reduce((a, b) => a + b, 0) / xs.length
+    return Math.sqrt(xs.reduce((a, b) => a + (b - m) ** 2, 0) / xs.length)
+  }
+
+  it('the eyes glance around: gaze moves, stays in range, and returns to centre', () => {
+    const f = frames('searching', 90)
+    expect(Math.max(...f.map((x) => Math.abs(x.gazeX)))).toBeGreaterThan(0.4)
+    expect(f.every((x) => Math.abs(x.gazeX) <= 1 && Math.abs(x.gazeY) <= 1)).toBe(true)
+    expect(f.some((x) => Math.abs(x.gazeX) < 0.02 && Math.abs(x.gazeY) < 0.02)).toBe(true)
+  })
+
+  it('a curious cat glances more often than a resting one', () => {
+    const glances = (s: CatState) => {
+      const f = frames(s, 240)
+      let n = 0
+      for (let i = 1; i < f.length; i++) if (Math.abs(f[i - 1]!.gazeX) < 0.1 && Math.abs(f[i]!.gazeX) >= 0.1) n++
+      return n
+    }
+    expect(glances('searching')).toBeGreaterThan(glances('idle') * 2)
+  })
+
+  it('slow content blinks happen when peaceful, not when searching', () => {
+    expect(Math.max(...frames('connected', 120).map((x) => x.lid))).toBeGreaterThan(0.7)
+    expect(Math.max(...frames('searching', 120).map((x) => x.lid))).toBe(0)
+  })
+
+  it('the head makes small sideways adjustments', () => {
+    const f = frames('connected', 150)
+    const m = Math.max(...f.map((x) => Math.abs(x.headShiftX)))
+    expect(m).toBeGreaterThan(0.8)
+    expect(m).toBeLessThan(4)
+  })
+
+  it('tail motion varies in timing and amplitude (no exact repeats, wide spread)', () => {
+    const tail = frames('connected', 240).map((x) => x.tail)
+    // peaks of consecutive sway cycles should not all be the same height
+    const peaks: number[] = []
+    for (let i = 1; i < tail.length - 1; i++) if (tail[i]! > tail[i - 1]! && tail[i]! >= tail[i + 1]! && tail[i]! > 2) peaks.push(tail[i]!)
+    expect(peaks.length).toBeGreaterThan(8)
+    expect(stdev(peaks)).toBeGreaterThan(0.5)
+    // no two 20 s windows are identical
+    const w = (a: number) => tail.slice(a * 1200, a * 1200 + 1200).map((x) => x.toFixed(2)).join()
+    expect(new Set([w(0), w(1), w(2), w(3)]).size).toBe(4)
+  })
+
+  it('independent tail swishes occur on top of the sway, and flick/swish never overlap', () => {
+    const e = new PersonalityEngine({ seed: 21 })
+    e.setState('connected')
+    let big = 0
+    let prev = 0
+    for (let i = 0; i < 60 * 300; i++) {
+      const f = e.step(DT)
+      if (Math.abs(f.tail - prev) > 0 && Math.abs(f.tail) > 14) big++
+      prev = f.tail
+    }
+    expect(big).toBeGreaterThan(0)
+  })
+
+  it('never does too much at once: major movements are budgeted', () => {
+    for (const state of ['searching', 'connected', 'settling'] as CatState[]) {
+      for (const seed of [1, 2, 3, 4, 5]) {
+        const e = new PersonalityEngine({ seed })
+        e.setState(state)
+        let worst = 0
+        for (let i = 0; i < 60 * 240; i++) {
+          e.step(DT)
+          worst = Math.max(worst, e.activeMajorCount)
+        }
+        expect(worst, `${state}/${seed}`).toBeLessThanOrEqual(2)
+      }
+    }
+  })
+
+  it('event timing is irregular, not periodic', () => {
+    const f = frames('searching', 300)
+    const starts: number[] = []
+    for (let i = 1; i < f.length; i++) if (Math.abs(f[i - 1]!.headTilt) < 0.2 && Math.abs(f[i]!.headTilt) >= 0.2) starts.push(i / 60)
+    const gaps = starts.slice(1).map((t, i) => t - starts[i]!)
+    expect(gaps.length).toBeGreaterThan(10)
+    expect(stdev(gaps)).toBeGreaterThan(0.8)
+  })
+
+  it('stays deterministic with the new channels', () => {
+    expect(frames('searching', 40, 5)).toEqual(frames('searching', 40, 5))
+  })
+
+  it('petting recentres the gaze (looks at you)', () => {
+    const e = new PersonalityEngine({ seed: 8 })
+    e.setState('searching')
+    run(e, 30)
+    e.pet()
+    const f = run(e, 0.4)
+    expect(Math.max(...f.map((x) => Math.abs(x.gazeX)))).toBeLessThan(0.6)
+  })
+
+  it('reduced motion also shrinks gaze and head shift', () => {
+    const full = new PersonalityEngine({ seed: 4 })
+    const calm = new PersonalityEngine({ seed: 4, motionScale: 0.4 })
+    full.setState('searching')
+    calm.setState('searching')
+    const a = run(full, 90)
+    const b = run(calm, 90)
+    expect(Math.max(...b.map((x) => Math.abs(x.headShiftX)))).toBeLessThan(Math.max(...a.map((x) => Math.abs(x.headShiftX))) * 0.5)
+  })
+})

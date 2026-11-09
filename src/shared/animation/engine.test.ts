@@ -255,3 +255,32 @@ describe('describeMotion (live vs decorative labelling)', () => {
     expect(m('stale', null, 70)).toEqual({ breath: 'decorative', heart: 'none' })
   })
 })
+
+describe('natural blinking', () => {
+  it('blink length and spacing vary (not a metronome)', () => {
+    const e = new AnimationEngine({ seed: 13 })
+    e.setInput({ state: 'connected', breathingBpm: 14, pulseBpm: 70 })
+    run(e, 10)
+    const frames = run(e, 400)
+    const starts: number[] = []
+    const lengths: number[] = []
+    let startedAt = -1
+    frames.forEach((f, i) => {
+      const closed = f.blink > 0.05
+      if (closed && startedAt < 0) {
+        startedAt = i
+        starts.push(i * DT)
+      }
+      if (!closed && startedAt >= 0) {
+        lengths.push((i - startedAt) * DT)
+        startedAt = -1
+      }
+    })
+    const spread = (xs: number[]) => Math.max(...xs) - Math.min(...xs)
+    expect(starts.length).toBeGreaterThan(40)
+    expect(spread(lengths)).toBeGreaterThan(0.04)
+    const gaps = starts.slice(1).map((t, i) => t - starts[i]!)
+    expect(spread(gaps)).toBeGreaterThan(1.5)
+    expect(Math.max(...lengths)).toBeLessThan(0.3)
+  })
+})

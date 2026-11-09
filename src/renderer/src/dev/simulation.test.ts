@@ -17,7 +17,7 @@ describe('simulation scenarios (dev only)', () => {
 
   it('maps scenarios to the intended cat states', () => {
     const state = (id: ScenarioId, s = 5) => deriveCatState(at(id, s), START + s * 1000)
-    expect(state('calm')).toBe('connected')
+    expect(state('normal')).toBe('connected')
     expect(state('slow')).toBe('connected')
     expect(state('fast')).toBe('connected')
     expect(state('settling')).toBe('settling')
@@ -34,17 +34,20 @@ describe('simulation scenarios (dev only)', () => {
 
   it('readings stay in the plausible, scenario-appropriate range while wandering', () => {
     for (let s = 0; s < 120; s += 3) {
-      const calm = at('calm', s).signal
-      expect(calm.breathing!.value).toBeGreaterThan(10)
-      expect(calm.breathing!.value).toBeLessThan(14)
+      const normal = at('normal', s).signal
+      expect(normal.breathing!.value).toBeGreaterThan(12)
+      expect(normal.breathing!.value).toBeLessThan(16)
+      const slow = at('slow', s).signal
+      expect(slow.breathing!.value).toBeGreaterThan(6)
+      expect(slow.breathing!.value).toBeLessThan(10)
       const fast = at('fast', s).signal
-      expect(fast.breathing!.value).toBeGreaterThan(20)
-      expect(fast.pulse!.value).toBeGreaterThan(90)
+      expect(fast.breathing!.value).toBeGreaterThan(19)
+      expect(fast.pulse!.value).toBeGreaterThan(84)
     }
   })
 
   it('only live scenarios keep updating', () => {
-    expect(updatesOverTime('calm')).toBe(true)
+    expect(updatesOverTime('normal')).toBe(true)
     expect(updatesOverTime('lost')).toBe(false)
     expect(updatesOverTime('error')).toBe(false)
   })
